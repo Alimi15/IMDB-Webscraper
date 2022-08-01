@@ -179,3 +179,6 @@ class IMDBScraper:
     driver.exit()
     driver.download_images()
 ```
+## Milestone 3
+
+Added testing using the unittest python library. The download_images method has been moved outside of the sraper class. Global variables are not referenced inside the class, parameters need to be passed instead.
