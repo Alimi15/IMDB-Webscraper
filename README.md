@@ -15,3 +15,7 @@ Added testing using the unittest python library. The download_images method has 
 ## Milestone 4
 
 Used AWS S3 Bucket to store data. Used boto3 library to connect to bucket. Created and allowed user to store data in AWS RDS using sqlalchemy library. Changed main part of code so that when run the user has an options to scrape/upload/download data.
+
+## Milestone 5
+
+Created an AWS RDS using PostgreSQL. The program can now upload data to the RDS. Installed Docker and created a docker image using `docker build --platform linux/amd64 --no-cache -t scraper-img .`in the terminal. Created an EC2 instance and used `ssh -i scraperkp.pem ec2-user@ec2-54-87-166-72.compute-1.amazonaws.com` to connect to the EC2 terminal.
