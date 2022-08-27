@@ -1,6 +1,8 @@
 from operator import truediv
 from selenium.webdriver.common.by import By
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+import upload_to_bucket as upl
 import time
 import uuid
 import json
@@ -9,8 +11,16 @@ import urllib.request
 import psycopg2
 import sqlalchemy as db
 import pandas as pd
-import upload_to_bucket as upl
-
+DATABASE_TYPE = 'postgresql'
+DBAPI = 'psycopg2'
+HOST = 'scraper-db.cdoruy3qj9zl.us-east-1.rds.amazonaws.com'
+USER = 'postgres'
+PASSWORD = 'imdbwebscraper'
+DATABASE = 'initial_scraper_db'
+PORT = 5432
+curr_dir = os.getcwd()
+chromeOptions = Options()
+chromeOptions.headless = True
 
 class IMDbScraper:
     """Webdriver class that has methods to load the IMDb website and scrape data from it.
@@ -78,19 +88,20 @@ class IMDbScraper:
         """
         list_dict = []
         for link in list_links:
-            try:
-                time.sleep(2)
-                d.session.get(link)
-                unique_id = uuid.uuid4()
-                name = d.session.find_element(By.XPATH, '//h1[@data-testid="hero-title-block__title"]').text
-                rating = d.session.find_element(By.XPATH, '//span[@class="sc-7ab21ed2-1 jGRxWM"]').text
-                year = d.session.find_element(By.XPATH, '//a[@class="ipc-link ipc-link--baseAlt ipc-link--inherit-color sc-8c396aa2-1 WIUyh"]').text
-                image_tag = d.session.find_element(By.XPATH, '//img[@class="ipc-image"]')
-                image_url = image_tag.get_attribute('src')
-                dict_film = {'UniqueID': str(unique_id), 'FriendlyID': link, 'Name': name, 'Rating': rating, 'Year': year, 'ImageURL': image_url}
-                list_dict.append(dict_film)
-            except:
-                pass
+            if not check_rescrape(link):
+                try:
+                    time.sleep(2)
+                    d.session.get(link)
+                    unique_id = uuid.uuid4()
+                    name = d.session.find_element(By.XPATH, '//h1[@data-testid="hero-title-block__title"]').text
+                    rating = d.session.find_element(By.XPATH, '//span[@class="sc-7ab21ed2-1 jGRxWM"]').text
+                    year = d.session.find_element(By.XPATH, '//a[@class="ipc-link ipc-link--baseAlt ipc-link--inherit-color sc-8c396aa2-1 WIUyh"]').text
+                    image_tag = d.session.find_element(By.XPATH, '//img[@class="ipc-image"]')
+                    image_url = image_tag.get_attribute('src')
+                    dict_film = {'uniqueid': str(unique_id), 'friendlyid': link, 'name': name, 'rating': rating, 'year': year, 'imageurl': image_url}
+                    list_dict.append(dict_film)
+                except:
+                    pass
         return list_dict
 
     def next(d: webdriver.Chrome):
@@ -131,13 +142,39 @@ def download_data(list_dict):
 
     for film in list_dict:
         try:
-            os.mkdir("/raw_data/"+film['UniqueID'])
+            dir_path = os.path.join(curr_dir, "raw_data/"+film['uniqueid'])
+            os.mkdir(dir_path)
         except FileExistsError:
                 pass
-        with open("/raw_data/"+film['UniqueID']+"/data.json", "w") as write_file:
+        with open(os.path.join(dir_path, "data.json"), "w") as write_file:
             json.dump(film, write_file, indent=4)
-        image_url = film['ImageURL']
-        urllib.request.urlretrieve(image_url, "/raw_data/"+film['UniqueID']+"/poster.jpg")
+        image_url = film['imageurl']
+        urllib.request.urlretrieve(image_url, os.path.join(dir_path, "poster.jpg"))
+
+def check_rescrape(link):
+    """Checks if the data from a given link has been scraped or not
+    
+    Parameters
+    ----------
+    link: str
+        The link from which data will be scraped
+
+    Returns
+    -------
+    bool
+        True if the link has already been scraped
+
+    """
+    engine = db.create_engine(f"{DATABASE_TYPE}+{DBAPI}://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}")
+    connection = engine.connect()
+    metadata = db.MetaData()
+    films = db.Table('films', metadata, autoload_with=engine)
+    query = db.select(films.columns.friendlyid)
+    ResultSet = connection.execute(query).fetchall()
+    for id in ResultSet:
+        if link[:38] in id:
+            return True
+    return False
 
 if __name__ == "__main__":
     list_dict_film = []
@@ -148,28 +185,34 @@ if __name__ == "__main__":
         print("4. Upload to Bucket")
         print("5. Upload to RDS")
         print("0. Quit")
-        choice = input("Choose an option from above")
+        choice = input("Choose an option from above: ")
         if choice == "1":
             dir_list = []
-            path_of_the_directory= '/raw_data'
+            path_of_the_directory= os.path.join(curr_dir, 'raw_data')
             for dir_name in os.listdir(path_of_the_directory):
-                f = os.path.join(path_of_the_directory,dir_name)
-                if os.path.isfile(f):
-                    dir_list.append(f)
-            for dir in dir_list:
-                filename = os.path.join(dir,'data.json')
-                with open(filename, 'r') as json_file:
+                if "." not in dir_name:
+                    f = os.path.join(path_of_the_directory,dir_name)
+                    filename = os.path.join(f,'data.json')
+                    if os.path.isfile(filename):
+                        dir_list.append(filename)
+            for file in dir_list:
+                with open(file, 'r') as json_file:
                     json_load = json.load(json_file)
                 list_dict_film.append(json_load)
         elif choice == "2":
             driver = IMDbScraper()
             driver.load()
             big_list = []
-            for i in range(3):
+            while len(big_list) < 10:
                 big_list.extend(driver.get_links())
+                for index, item in enumerate(big_list[1:]):
+                    for i in range(index+1):
+                        if item[:38] == big_list[i][:38]:
+                            del big_list[index+1]
+                            break
                 driver.next()
             try:
-                os.mkdir("raw_data")
+                os.mkdir(os.path.join(curr_dir, "raw_data"))
             except FileExistsError:
                 pass
             list_dict_film.extend(driver.crawl(big_list))
@@ -178,17 +221,12 @@ if __name__ == "__main__":
             download_data(list_dict_film)
         elif choice == "4":
             for film in list_dict_film:
-                upl.create_bucket_directory(film["Unique ID"])
-                upl.upload_to_bucket("/raw_data/"+film["UniqueID"]+"/data.json", film["UniqueID"]+"/data.json")
-                upl.upload_to_bucket("/raw_data/"+film["UniqueID"]+"/poster.jpg", film["UniqueID"]+"/poster.jpg")
+                if not upl.folder_exists(film["uniqueid"]):
+                    filepath = os.path.join(curr_dir, "raw_data/"+film["uniqueid"])
+                    upl.create_bucket_directory(film["uniqueid"])
+                    upl.upload_to_bucket(os.path.join(filepath, "data.json"), film["uniqueid"]+"/data.json")
+                    upl.upload_to_bucket(os.path.join(filepath, "poster.jpg"), film["uniqueid"]+"/poster.jpg")
         elif choice == "5":
-            DATABASE_TYPE = 'postgresql'
-            DBAPI = 'psycopg2'
-            HOST = 'scraper-db.cdoruy3qj9zl.us-east-1.rds.amazonaws.com'
-            USER = 'postgres'
-            PASSWORD = 'imdbwebscraper'
-            DATABASE = 'initial_scraper_db'
-            PORT = 5432
             engine = db.create_engine(f"{DATABASE_TYPE}+{DBAPI}://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}")
             connection = engine.connect()
             metadata = db.MetaData()

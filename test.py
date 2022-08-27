@@ -48,19 +48,19 @@ class WebscraperTestCase(unittest.TestCase):
         links = ["https://www.imdb.com/title/tt9419884/", "https://www.imdb.com/title/tt10648342/"]
         list_dict_film = driver.crawl(links)
         driver.exit()
-        dict_film1 = {'Unique ID': list_dict_film[0]['Unique ID'], 'ID': links[0], 'Name': 'Doctor Strange in the Multiverse of Madness', 'Rating': '7.0', 'Year': '2022', 'Image URL': 'https://m.media-amazon.com/images/M/MV5BNWM0ZGJlMzMtZmYwMi00NzI3LTgzMzMtNjMzNjliNDRmZmFlXkEyXkFqcGdeQXVyMTM1MTE1NDMx._V1_QL75_UX190_CR0,0,190,281_.jpg'}
-        dict_film2 = {'Unique ID': list_dict_film[1]['Unique ID'], 'ID': links[1], 'Name': 'Thor: Love and Thunder', 'Rating': '6.8', 'Year': '2022', 'Image URL': 'https://m.media-amazon.com/images/M/MV5BMmExZTlmNGMtMTVhYy00N2U5LTg2MzYtNThjNDM2YjM4YjRhXkEyXkFqcGdeQXVyNTA3MTU2MjE@._V1_QL75_UX190_CR0,0,190,281_.jpg'}
+        dict_film1 = {'uniqueid': list_dict_film[0]['uniqueid'], 'friendlyid': links[0], 'name': 'Doctor Strange in the Multiverse of Madness', 'rating': '7.0', 'year': '2022', 'imageurl': 'https://m.media-amazon.com/images/M/MV5BNWM0ZGJlMzMtZmYwMi00NzI3LTgzMzMtNjMzNjliNDRmZmFlXkEyXkFqcGdeQXVyMTM1MTE1NDMx._V1_QL75_UX190_CR0,0,190,281_.jpg'}
+        dict_film2 = {'uniqueid': list_dict_film[1]['uniqueid'], 'friendlyid': links[1], 'name': 'Thor: Love and Thunder', 'rating': '6.8', 'year': '2022', 'imageurl': 'https://m.media-amazon.com/images/M/MV5BMmExZTlmNGMtMTVhYy00N2U5LTg2MzYtNThjNDM2YjM4YjRhXkEyXkFqcGdeQXVyNTA3MTU2MjE@._V1_QL75_UX190_CR0,0,190,281_.jpg'}
         list_dict = [dict_film1, dict_film2]
         self.assertEqual(list_dict_film, list_dict)
         
 
-    def test_download_images(self):
-        test_dict = [{'Unique ID': 'test', 'Image URL': 'https://m.media-amazon.com/images/M/MV5BMmExZTlmNGMtMTVhYy00N2U5LTg2MzYtNThjNDM2YjM4YjRhXkEyXkFqcGdeQXVyNTA3MTU2MjE@._V1_QL75_UX380_CR0,0,380,562_.jpg'}]
+    def test_download_data(self):
+        test_dict = [{'uniqueid': 'test', 'imageurl': 'https://m.media-amazon.com/images/M/MV5BMmExZTlmNGMtMTVhYy00N2U5LTg2MzYtNThjNDM2YjM4YjRhXkEyXkFqcGdeQXVyNTA3MTU2MjE@._V1_QL75_UX380_CR0,0,380,562_.jpg'}]
         try:       
             os.mkdir("/Users/aliilt/Documents/IMDB-Webscraper/raw_data/test")
         except FileExistsError:
             pass
-        scraper.download_images(test_dict)
+        scraper.download_data(test_dict)
         self.assertTrue(os.path.exists('/Users/aliilt/Documents/IMDB-Webscraper/raw_data/test/poster.jpg'))
 
 
