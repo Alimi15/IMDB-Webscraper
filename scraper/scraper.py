@@ -1,7 +1,7 @@
 from operator import truediv
 from selenium.webdriver.common.by import By
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver import ChromeOptions
 import upload_to_bucket as upl
 import time
 import uuid
@@ -18,9 +18,6 @@ USER = 'postgres'
 PASSWORD = 'imdbwebscraper'
 DATABASE = 'initial_scraper_db'
 PORT = 5432
-curr_dir = os.getcwd()
-chromeOptions = Options()
-chromeOptions.headless = True
 
 class IMDbScraper:
     """Webdriver class that has methods to load the IMDb website and scrape data from it.
@@ -37,7 +34,15 @@ class IMDbScraper:
     def __init__(self):
         """Constructor method
         """
-        self.session = webdriver.Chrome()
+        chromeOptions = ChromeOptions()
+        # chromeOptions.add_argument('--no-sandbox')
+        chromeOptions.add_argument('--window-size=1920, 1080')
+        chromeOptions.add_argument('--disable-gpu')
+        chromeOptions.add_argument('--headless')
+        chromeOptions.add_argument("--disable-dev-shm-usage")
+        chromeOptions.add_argument("--crash-dumps-dir=/tmp")
+        chromeOptions.headless = True
+        self.session = webdriver.Chrome(options=chromeOptions)
         self.URL = "https://www.imdb.com/search/keyword/?keywords=superhero&pf_rd_m=A2FGELUUNOQJNL&pf_rd_p=a581b14c-5a82-4e29-9cf8-54f909ced9e1&pf_rd_r=WCKJ24NKVMM6G468NPWT&pf_rd_s=center-5&pf_rd_t=15051&pf_rd_i=genre&ref_=kw_ref_typ&mode=detail&page=1&sort=user_rating,desc&title_type=movie"
 
     def load(self):
@@ -176,7 +181,100 @@ def check_rescrape(link):
             return True
     return False
 
+def load_data_from_local_computer(list_of_dict_of_film):
+    """Loads any data currently saved on the local computer
+    
+    Parameters
+    ----------
+    list_of_dict_of_film: list of dict
+        The list of dictionaries of film data that is currently stored in the environment
+
+    Returns
+    -------
+    list_of_dict_of_film: list of dict
+        An updated version of the parameter passed in, now containing the data that was stored locally
+
+    """
+    curr_dir = os.getcwd()
+    dir_list = []
+    path_of_the_directory= os.path.join(curr_dir, 'raw_data')
+    for dir_name in os.listdir(path_of_the_directory):
+        if "." not in dir_name:
+            f = os.path.join(path_of_the_directory,dir_name)
+            filename = os.path.join(f,'data.json')
+            if os.path.isfile(filename):
+                dir_list.append(filename)
+    for file in dir_list:
+        with open(file, 'r') as json_file:
+            json_load = json.load(json_file)
+        list_of_dict_of_film.append(json_load)
+    return list_of_dict_of_film
+
+def scrape_data():
+    """Scrapes the data using Selenium Chrome Driver
+
+    Returns
+    -------
+    new_list_dict: list of dict
+        A list of dictionaries of film data that has just been scraped
+
+    """
+    driver = IMDbScraper()
+    driver.load()
+    big_list = []
+    while len(big_list) < 10:
+        big_list.extend(driver.get_links())
+        for index, item in enumerate(big_list[1:]):
+            for i in range(index+1):
+                if item[:38] == big_list[i][:38]:
+                    del big_list[index+1]
+                    break
+        driver.next()
+    try:
+        os.mkdir(os.path.join(curr_dir, "raw_data"))
+    except FileExistsError:
+        pass
+    new_list_dict = driver.crawl(big_list)
+    driver.exit()
+    return new_list_dict
+
+def upload_data_to_bucket(list_of_dict_of_film):
+    """Uploads data currently stored in environment to an AWS S3 Bucket
+
+    Parameters
+    ----------
+    list_of_dict_of_film: list of dict
+        The list of dictionaries of film data that is currently stored in the environment
+
+    """
+    curr_dir = os.getcwd()
+    try:
+        os.mkdir(os.path.join(curr_dir, "tmp"))
+    except FileExistsError:
+        pass
+    for film in list_of_dict_of_film:
+        if not upl.folder_exists(film["uniqueid"]):
+            filepath = os.path.join(curr_dir, "tmp")
+            with open(os.path.join(filepath, "data.json"), "w") as write_file:
+                json.dump(film, write_file, indent=4)
+            urllib.request.urlretrieve(film["imageurl"], os.path.join(filepath, "poster.jpg"))
+            upl.create_bucket_directory(film["uniqueid"])
+            upl.upload_to_bucket(os.path.join(filepath, "data.json"), film["uniqueid"]+"/data.json")
+            upl.upload_to_bucket(os.path.join(filepath, "poster.jpg"), film["uniqueid"]+"/poster.jpg")
+    
+def upload_data_to_rds():
+    """Uploads data currently stored in environment to an AWS RDS
+    """
+    engine = db.create_engine(f"{DATABASE_TYPE}+{DBAPI}://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}")
+    connection = engine.connect()
+    metadata = db.MetaData()
+    films = db.Table('films', metadata, autoload=True, autoload_with=engine)
+    query = db.insert(films)
+    values_list = list_dict_film
+    connection.execute(query,values_list)
+
 if __name__ == "__main__":
+    curr_dir = os.getcwd()
     list_dict_film = []
     while True:
         print("1. Load Data")
@@ -187,52 +285,14 @@ if __name__ == "__main__":
         print("0. Quit")
         choice = input("Choose an option from above: ")
         if choice == "1":
-            dir_list = []
-            path_of_the_directory= os.path.join(curr_dir, 'raw_data')
-            for dir_name in os.listdir(path_of_the_directory):
-                if "." not in dir_name:
-                    f = os.path.join(path_of_the_directory,dir_name)
-                    filename = os.path.join(f,'data.json')
-                    if os.path.isfile(filename):
-                        dir_list.append(filename)
-            for file in dir_list:
-                with open(file, 'r') as json_file:
-                    json_load = json.load(json_file)
-                list_dict_film.append(json_load)
+            list_dict_film = load_data_from_local_computer(list_dict_film)
         elif choice == "2":
-            driver = IMDbScraper()
-            driver.load()
-            big_list = []
-            while len(big_list) < 10:
-                big_list.extend(driver.get_links())
-                for index, item in enumerate(big_list[1:]):
-                    for i in range(index+1):
-                        if item[:38] == big_list[i][:38]:
-                            del big_list[index+1]
-                            break
-                driver.next()
-            try:
-                os.mkdir(os.path.join(curr_dir, "raw_data"))
-            except FileExistsError:
-                pass
-            list_dict_film.extend(driver.crawl(big_list))
-            driver.exit()
+            list_dict_film.extend(scrape_data())
         elif choice == "3":
             download_data(list_dict_film)
         elif choice == "4":
-            for film in list_dict_film:
-                if not upl.folder_exists(film["uniqueid"]):
-                    filepath = os.path.join(curr_dir, "raw_data/"+film["uniqueid"])
-                    upl.create_bucket_directory(film["uniqueid"])
-                    upl.upload_to_bucket(os.path.join(filepath, "data.json"), film["uniqueid"]+"/data.json")
-                    upl.upload_to_bucket(os.path.join(filepath, "poster.jpg"), film["uniqueid"]+"/poster.jpg")
+            upload_data_to_bucket(list_dict_film)
         elif choice == "5":
-            engine = db.create_engine(f"{DATABASE_TYPE}+{DBAPI}://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}")
-            connection = engine.connect()
-            metadata = db.MetaData()
-            films = db.Table('films', metadata, autoload=True, autoload_with=engine)
-            query = db.insert(films)
-            values_list = list_dict_film
-            ResultProxy = connection.execute(query,values_list)
+            upload_data_to_rds()
         elif choice == "0":
             break
