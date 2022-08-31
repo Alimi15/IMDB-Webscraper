@@ -35,7 +35,7 @@ class IMDbScraper:
         """Constructor method
         """
         chromeOptions = ChromeOptions()
-        # chromeOptions.add_argument('--no-sandbox')
+        chromeOptions.add_argument('--no-sandbox')
         chromeOptions.add_argument('--window-size=1920, 1080')
         chromeOptions.add_argument('--disable-gpu')
         chromeOptions.add_argument('--headless')
