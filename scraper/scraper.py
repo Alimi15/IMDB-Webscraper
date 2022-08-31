@@ -41,6 +41,7 @@ class IMDbScraper:
         chromeOptions.add_argument('--headless')
         chromeOptions.add_argument("--disable-dev-shm-usage")
         chromeOptions.add_argument("--crash-dumps-dir=/tmp")
+        chromeOptions.add_argument("--start-maximized")
         chromeOptions.headless = True
         self.session = webdriver.Chrome(options=chromeOptions)
         self.URL = "https://www.imdb.com/search/keyword/?keywords=superhero&pf_rd_m=A2FGELUUNOQJNL&pf_rd_p=a581b14c-5a82-4e29-9cf8-54f909ced9e1&pf_rd_r=WCKJ24NKVMM6G468NPWT&pf_rd_s=center-5&pf_rd_t=15051&pf_rd_i=genre&ref_=kw_ref_typ&mode=detail&page=1&sort=user_rating,desc&title_type=movie"
