@@ -32,8 +32,8 @@ Running container locally:
 `docker run -ti --name mycontainer --rm -v myvolume:/imdb-webscraper --platform linux/amd64 scraper-img`
 
 Pushing Docker Container to DockerHub:
-`docker tag 97ca198d2e08 aliilt/imdb-webscraper
-docker push aliilt/imdb-webscraper`
+`docker tag 97ca198d2e08 aliilt/imdb-webscraper`
+`docker push aliilt/imdb-webscraper`
 
 Running container on EC2:
 `docker run -ti --name mycontainer --rm -v myvolume:/imdb-webscraper --platform linux/amd64 aliilt/imdb-webscraper`
