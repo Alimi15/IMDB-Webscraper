@@ -18,4 +18,22 @@ Used AWS S3 Bucket to store data. Used boto3 library to connect to bucket. Creat
 
 ## Milestone 5
 
-Created an AWS RDS using PostgreSQL. The program can now upload data to the RDS. Installed Docker and created a docker image using `docker build --platform linux/amd64 --no-cache -t scraper-img .`in the terminal. Created an EC2 instance and used `ssh -i scraperkp.pem ec2-user@ec2-54-87-166-72.compute-1.amazonaws.com` to connect to the EC2 terminal.
+Created an AWS RDS using PostgreSQL. The program can now upload data to the RDS. Installed Docker and created a docker image. Created an EC2 instance and connected to the EC2 terminal.
+
+Commands used in the terminal:
+
+Connect to EC2 instance in terminal:
+`ssh -i scraperkp.pem ec2-user@ec2-54-87-166-72.compute-1.amazonaws.com`
+
+Build Docker container:
+`docker build --platform linux/amd64 --no-cache -t scraper-img .`
+
+Running container locally:
+`docker run -ti --name mycontainer --rm -v myvolume:/imdb-webscraper --platform linux/amd64 scraper-img`
+
+Pushing Docker Container to DockerHub:
+`docker tag 97ca198d2e08 aliilt/imdb-webscraper
+docker push aliilt/imdb-webscraper`
+
+Running container on EC2:
+`docker run -ti --name mycontainer --rm -v myvolume:/imdb-webscraper --platform linux/amd64 aliilt/imdb-webscraper`
