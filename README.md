@@ -37,3 +37,7 @@ Pushing Docker Container to DockerHub:
 
 Running container on EC2:
 `docker run -ti --name mycontainer --rm -v myvolume:/imdb-webscraper --platform linux/amd64 aliilt/imdb-webscraper`
+
+## Milestone 6
+
+Installed Prometheus and Grafana. Created a Grafana dashboard showing Prometheus metrics on the Docker container and the EC2 instance. 
