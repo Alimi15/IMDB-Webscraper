@@ -40,4 +40,8 @@ Running container on EC2:
 
 ## Milestone 6
 
-Installed Prometheus and Grafana. Created a Grafana dashboard showing Prometheus metrics on the Docker container and the EC2 instance. 
+Installed Prometheus and Grafana. Created a Grafana dashboard showing Prometheus metrics on the Docker container and the EC2 instance.
+
+## Milestone 7
+
+Created GitHub Action that builds and pushes Docker image to DockerHub. Used GitHub Secrets to store credentials. Created a cronjob on the EC2 instance which stops then runs the scraper every day at midnight.
